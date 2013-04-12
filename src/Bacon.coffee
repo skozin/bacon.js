@@ -541,6 +541,7 @@ class Observable
     Bacon.combineAsArray(this, other)
       .map (values) ->
         combinator(values[0], values[1])
+  then: (f) => @flatMap(f)
 
 class EventStream extends Observable
   constructor: (subscribe) ->
@@ -752,6 +753,9 @@ addPropertyInitValueToStream = (property, stream) ->
       Bacon.noMore
     value
   stream.toProperty(getInitValue(property))
+
+Property.of = Bacon.constant
+EventStream.of = Bacon.once
 
 class Dispatcher
   constructor: (subscribe, handleEvent) ->
