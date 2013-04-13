@@ -541,7 +541,7 @@ class Observable
     Bacon.combineAsArray(this, other)
       .map (values) ->
         combinator(values[0], values[1])
-  then: (f) => @flatMap(f)
+  chain: (f) => @flatMap(f)
 
 class EventStream extends Observable
   constructor: (subscribe) ->
