@@ -1037,9 +1037,10 @@ Specification](https://github.com/puffnfresh/fantasy-land). To match the
 specification, I've added a few aliases:
 
 ```coffeescript
-EventStream.of == Bacon.once
-Property.of == Bacon.constant
-Observable :: chain == Observable :: flatMap
+EventStream.of = Bacon.once
+EventStream.empty = Bacon.never
+Property.of = Bacon.constant
+Observable :: chain = Observable :: flatMap
 ```
 
 ### Functor
@@ -1066,6 +1067,11 @@ composition by flatMap to be consistent with the monadic interface.
 
 `Property` implementa `Applicative`. The `ap` function is based on
 `compose` so it combines latest values of two Properties.
+
+### Monoid, Semigroup
+
+`EventStream` implements Monoid and thus Semigroup though `empty` and
+`concat`.
 
 Examples
 ========

@@ -1444,6 +1444,22 @@ describe "EventStream as Fantasy Land Monad", ->
         .chain((x) -> _of(x * 4))
       [8])
 
+describe "EventStream as Fantasy Land Monoid", ->
+  _of = Bacon.EventStream.of
+  _empty = Bacon.EventStream.empty
+  it "has concat", ->
+    expectStreamEvents(
+      -> _of(1).concat(_of(2))
+      [1,2])
+  it "has EventStream.empty()", ->
+    expectStreamEvents((-> _of(0).constructor.empty()), [])
+    expectStreamEvents((-> _of(0).empty()), [])
+    expectStreamEvents((-> Bacon.EventStream.empty()), [])
+  it "right identity", ->
+    expectStreamEvents((-> _of(1).concat(_empty())), [1])
+  it "left identity", ->
+    expectStreamEvents((-> _empty().concat(_of(1))), [1])
+
 describe "Property.of as in Fantasy Land", ->
   _of = Bacon.Property.of
   it "Creates single-event stream with EventStream.of", ->
