@@ -1404,13 +1404,19 @@ describe "EventStream as Fantasy Land Monad", ->
       [1])
   it "Allows chaining", ->
     expectStreamEvents(
-      -> Bacon.EventStream.of(1).chain((x) -> Bacon.EventStream.of(x))
-      [1])
+      -> Bacon.EventStream.of(1).chain((x) -> Bacon.EventStream.of(x * 2))
+      [2])
+  it "Allows re-chaining", ->
+    expectStreamEvents(
+      -> Bacon.EventStream.of(1)
+        .chain((x) -> Bacon.EventStream.of(x * 2))
+        .chain((x) -> Bacon.EventStream.of(x * 4))
+      [8])
   it "Creates single-event stream also with EventStream.prototype.of", ->
     expectStreamEvents(
       -> 
         src = Bacon.EventStream.of(1)
-        src.chain((x) -> src.of(x))
+        src.chain(src.of)
       [1])
 
 lessThan = (limit) ->
