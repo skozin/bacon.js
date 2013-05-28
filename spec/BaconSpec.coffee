@@ -1444,6 +1444,23 @@ describe "EventStream as Fantasy Land Monad", ->
         .chain((x) -> _of(x * 4))
       [8])
 
+describe "Property as Fantasy Land Applicative", ->
+  _of = Bacon.Property.of
+  it "Applies function", ->
+    expectPropertyEvents(
+      -> _of((x) -> x * 2).ap(_of(1))
+      [2])
+  it "Identity", ->
+    expectPropertyEvents(
+      -> _of((x) -> x).ap(_of(2))
+      [2])
+  it "Composition", ->
+    expectPropertyEvents(
+      ->
+        f = (x) -> (y) -> (z) -> x + y + z
+        _of(f).ap(_of(1)).ap(_of(2)).ap(_of(3))
+      [6])
+
 lessThan = (limit) ->
   (x) -> x < limit
 times = (x, y) -> x * y

@@ -744,6 +744,7 @@ class Property extends Observable
   debounce: (delay) -> @delayChanges((changes) -> changes.debounce(delay))
   throttle: (delay) -> @delayChanges((changes) -> changes.throttle(delay))
   delayChanges: (f) -> addPropertyInitValueToStream(this, f(@changes()))
+  ap: (b) -> @combine(b, (a, b) -> a(b))
 
 addPropertyInitValueToStream = (property, stream) ->
   getInitValue = (property) ->
