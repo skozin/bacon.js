@@ -1028,6 +1028,37 @@ way the application developer has more direct control over error
 handling. You can always use `stream.endOnError()` to get a stream
 that ends on error!
 
+Fantasy Land
+------------
+
+Bacon.js implements some of the algebraic structures defined in the
+[Fantasy Land
+Specification](https://github.com/puffnfresh/fantasy-land). To match the
+specification, I've added a few aliases:
+
+```js
+EventStream.of == Bacon.once
+Property.of == Bacon.constant
+Observable.prototype.chain == Observable.prototype.flatMap
+```
+
+### Functor
+
+Both `EventStream` and `Property` implement `Functor`, with their `map`
+function.
+
+### Monad
+
+`EventStream` implements `Monad`:
+
+```js
+EventStream.of("fun").chain(function(x) { return EventStream.of(x) })
+```
+
+`Property` also supports the monadic interface, but I'm not sure if it's
+strictly a Fantasy Land monad, because the `chain` method actually
+returns an `EventStream`
+
 Examples
 ========
 
