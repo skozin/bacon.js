@@ -1444,6 +1444,24 @@ describe "EventStream as Fantasy Land Monad", ->
         .chain((x) -> _of(x * 4))
       [8])
 
+describe "Property.of as in Fantasy Land", ->
+  _of = Bacon.Property.of
+  it "Creates single-event stream with EventStream.of", ->
+    expectPropertyEvents(
+      -> _of(1)
+      [1])
+  it "Creates single-event stream also with EventStream.prototype.of", ->
+    expectPropertyEvents(
+      -> 
+        src = _of(1).of(2)
+      [2])
+  it "Creates single-event stream also with EventStream.prototype.constructor.of", ->
+    expectPropertyEvents(
+      -> 
+        src = _of(1).constructor.of(2)
+      [2])
+
+
 describe "Property as Fantasy Land Applicative", ->
   _of = Bacon.Property.of
   it "Applies function", ->
