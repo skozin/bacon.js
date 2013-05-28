@@ -754,8 +754,8 @@ addPropertyInitValueToStream = (property, stream) ->
     value
   stream.toProperty(getInitValue(property))
 
-Property.of = Bacon.constant
-EventStream.of = Bacon.once
+Property.of = Property :: of = Bacon.constant
+EventStream.of = EventStream :: of = Bacon.once
 
 class Dispatcher
   constructor: (subscribe, handleEvent) ->

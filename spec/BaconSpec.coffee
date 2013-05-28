@@ -1397,6 +1397,22 @@ describe "EventStream", ->
     bus.push("bacon")
     expect(values).toEqual(["bacon"])
 
+describe "EventStream as Fantasy Land Monad", ->
+  it "Creates single-event stream with EventStream.of", ->
+    expectStreamEvents(
+      -> Bacon.EventStream.of(1)
+      [1])
+  it "Allows chaining", ->
+    expectStreamEvents(
+      -> Bacon.EventStream.of(1).chain((x) -> Bacon.EventStream.of(x))
+      [1])
+  it "Creates single-event stream also with EventStream.prototype.of", ->
+    expectStreamEvents(
+      -> 
+        src = Bacon.EventStream.of(1)
+        src.chain((x) -> src.of(x))
+      [1])
+
 lessThan = (limit) ->
   (x) -> x < limit
 times = (x, y) -> x * y
