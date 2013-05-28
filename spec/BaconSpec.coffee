@@ -1397,27 +1397,52 @@ describe "EventStream", ->
     bus.push("bacon")
     expect(values).toEqual(["bacon"])
 
-describe "EventStream as Fantasy Land Monad", ->
+describe "EventStream.of as in Fantasy Land", ->
+  _of = Bacon.EventStream.of
   it "Creates single-event stream with EventStream.of", ->
     expectStreamEvents(
-      -> Bacon.EventStream.of(1)
+      -> _of(1)
       [1])
+  it "Creates single-event stream also with EventStream.prototype.of", ->
+    expectStreamEvents(
+      -> 
+        src = _of(1).of(2)
+      [2])
+  it "Creates single-event stream also with EventStream.prototype.constructor.of", ->
+    expectStreamEvents(
+      -> 
+        src = _of(1).constructor.of(2)
+      [2])
+
+describe "EventStream as Fantasy Land Applicative", ->
+  _of = Bacon.EventStream.of
+  it "Applies function", ->
+    expectStreamEvents(
+      -> _of((x) -> x * 2).ap(_of(1))
+      [2])
+  it "Identity", ->
+    expectStreamEvents(
+      -> _of((x) -> x).ap(_of(2))
+      [2])
+  it "Composition", ->
+    expectStreamEvents(
+      ->
+        f = (x) -> (y) -> (z) -> x + y + z
+        _of(f).ap(_of(1)).ap(_of(2)).ap(_of(3))
+      [6])
+
+describe "EventStream as Fantasy Land Monad", ->
+  _of = Bacon.EventStream.of
   it "Allows chaining", ->
     expectStreamEvents(
-      -> Bacon.EventStream.of(1).chain((x) -> Bacon.EventStream.of(x * 2))
+      -> _of(1).chain((x) -> _of(x * 2))
       [2])
   it "Allows re-chaining", ->
     expectStreamEvents(
       -> Bacon.EventStream.of(1)
-        .chain((x) -> Bacon.EventStream.of(x * 2))
-        .chain((x) -> Bacon.EventStream.of(x * 4))
+        .chain((x) -> _of(x * 2))
+        .chain((x) -> _of(x * 4))
       [8])
-  it "Creates single-event stream also with EventStream.prototype.of", ->
-    expectStreamEvents(
-      -> 
-        src = Bacon.EventStream.of(1)
-        src.chain(src.of)
-      [1])
 
 lessThan = (limit) ->
   (x) -> x < limit

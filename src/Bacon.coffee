@@ -660,6 +660,7 @@ class EventStream extends Observable
     dispatcher = new Dispatcher(@subscribe, handler)
     new EventStream(dispatcher.subscribe)
   withSubscribe: (subscribe) -> new EventStream(subscribe)
+  ap: (b) => @flatMap (a) -> b.map (b) -> a(b)
 
 class Property extends Observable
   constructor: (subscribe, handler) ->

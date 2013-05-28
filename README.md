@@ -1036,10 +1036,10 @@ Bacon.js implements some of the algebraic structures defined in the
 Specification](https://github.com/puffnfresh/fantasy-land). To match the
 specification, I've added a few aliases:
 
-```js
+```coffeescript
 EventStream.of == Bacon.once
 Property.of == Bacon.constant
-Observable.prototype.chain == Observable.prototype.flatMap
+Observable :: chain == Observable :: flatMap
 ```
 
 ### Functor
@@ -1051,13 +1051,18 @@ function.
 
 `EventStream` implements `Monad`:
 
-```js
-EventStream.of("fun").chain(function(x) { return EventStream.of(x) })
+```coffeescript
+EventStream.of("fun").chain((x) -> EventStream.of(x))
 ```
 
 `Property` also supports the monadic interface, but I'm not sure if it's
 strictly a Fantasy Land monad, because the `chain` method actually
 returns an `EventStream`
+
+### Applicative
+
+`EventStream` implements `Applicative`. The `ap` function uses
+composition by flatMap to be consistent with the monadic interface.
 
 Examples
 ========
