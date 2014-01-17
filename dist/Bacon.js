@@ -11,7 +11,13 @@
     }
   };
 
+<<<<<<< HEAD
   Bacon.version = '0.7.7';
+||||||| merged common ancestors
+  Bacon.version = '0.7.1';
+=======
+  Bacon.version = '<version>';
+>>>>>>> build js
 
   Bacon.fromBinder = function(binder, eventTransformer) {
     if (eventTransformer == null) {
@@ -251,7 +257,7 @@
         if (_.empty(values)) {
           return sink(end());
         } else {
-          value = values.splice(0, 1)[0];
+          value = _.popHead(values);
           reply = sink(toEvent(value));
           if ((reply !== Bacon.noMore) && !unsubd) {
             return send();
@@ -933,6 +939,12 @@
       return flatMap_(this, makeSpawner(arguments), true);
     };
 
+    Observable.prototype.flatMapWithConcurrencyLimit = function() {
+      var args, limit;
+      limit = arguments[0], args = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
+      return flatMap_(this, makeSpawner(args), false, limit);
+    };
+
     Observable.prototype.flatMapLatest = function() {
       var f, stream;
       f = makeSpawner(arguments);
@@ -1009,10 +1021,39 @@
 
   Observable.prototype.reduce = Observable.prototype.fold;
 
-  flatMap_ = function(root, f, firstOnly) {
+  flatMap_ = function(root, f, firstOnly, limit) {
     return new EventStream(describe(root, "flatMap" + (firstOnly ? "First" : ""), f), function(sink) {
-      var checkEnd, composite;
+      var checkEnd, checkQueue, composite, queue, subscribeChild;
       composite = new CompositeUnsubscribe();
+      queue = [];
+      subscribeChild = function(child) {
+        return composite.add(function(unsubAll, unsubMe) {
+          return child.subscribe(function(event) {
+            var reply;
+            if (event.isEnd()) {
+              checkQueue();
+              checkEnd(unsubMe);
+              return Bacon.noMore;
+            } else {
+              if (event instanceof Initial) {
+                event = event.toNext();
+              }
+              reply = sink(event);
+              if (reply === Bacon.noMore) {
+                unsubAll();
+              }
+              return reply;
+            }
+          });
+        });
+      };
+      checkQueue = function() {
+        var child;
+        child = _.popHead(queue);
+        if (child) {
+          return subscribeChild(child);
+        }
+      };
       checkEnd = function(unsub) {
         unsub();
         if (composite.empty()) {
@@ -1033,6 +1074,7 @@
               return Bacon.noMore;
             }
             child = makeObservable(f(event.value()));
+<<<<<<< HEAD
             return composite.add(function(unsubAll, unsubMe) {
               return child.subscribeInternal(function(event) {
                 var reply;
@@ -1051,6 +1093,32 @@
                 }
               });
             });
+||||||| merged common ancestors
+            return composite.add(function(unsubAll, unsubMe) {
+              return child.subscribe(function(event) {
+                var reply;
+                if (event.isEnd()) {
+                  checkEnd(unsubMe);
+                  return Bacon.noMore;
+                } else {
+                  if (event instanceof Initial) {
+                    event = event.toNext();
+                  }
+                  reply = sink(event);
+                  if (reply === Bacon.noMore) {
+                    unsubAll();
+                  }
+                  return reply;
+                }
+              });
+            });
+=======
+            if (limit && composite.count() > limit) {
+              return queue.push(child);
+            } else {
+              return subscribeChild(child);
+            }
+>>>>>>> build js
           }
         });
       });
@@ -2391,9 +2459,9 @@
     };
     findIndependent = function() {
       while (!independent(waiters[0])) {
-        waiters.push(waiters.splice(0, 1)[0]);
+        waiters.push(_.popHead(waiters));
       }
-      return waiters.splice(0, 1)[0];
+      return _.popHead(waiters);
     };
     flush = function() {
       var _results;
@@ -2793,6 +2861,9 @@
       if (i >= 0) {
         return xs.splice(i, 1);
       }
+    },
+    popHead: function(xs) {
+      return xs.splice(0, 1)[0];
     },
     fold: function(xs, seed, f) {
       var x, _i, _len;
