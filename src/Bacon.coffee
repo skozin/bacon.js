@@ -414,9 +414,9 @@ class Observable
         if reply == Bacon.noMore
           return reply
       reply
-  scan: (seed, f, lazyF) =>
+  scan: (seed, f, options = {}) =>
     f_ = toCombinator(f)
-    f = if lazyF then f_ else (x,y) -> f_(x(), y())
+    f = if options.lazyF then f_ else (x,y) -> f_(x(), y())
     acc = toOption(seed).map((x) -> _.always(x))
     root = this
     subscribe = (sink) =>
@@ -441,6 +441,7 @@ class Observable
             prev = acc.getOrElse(-> undefined)
             next = _.cached(-> f(prev, event.value))
             acc = new Some(next)
+            next() if (options.eager)
             sink (event.apply(next))
         else
           if event.isEnd()
@@ -450,8 +451,8 @@ class Observable
       unsub
     resultProperty = new Property describe(this, "scan", seed, f), subscribe
 
-  fold: (seed, f) =>
-    withDescription(this, "fold", seed, f, @scan(seed, f).sampledBy(@filter(false).mapEnd().toProperty()))
+  fold: (seed, f, options) =>
+    withDescription(this, "fold", seed, f, @scan(seed, f, options).sampledBy(@filter(false).mapEnd().toProperty()))
 
   zip: (other, f = Array) ->
     withDescription(this, "zip", other,
@@ -658,7 +659,7 @@ class EventStream extends Observable
 
   toProperty: (initValue) ->
     initValue = None if arguments.length == 0
-    withDescription this, "toProperty", initValue, @scan(initValue, latterF, true)
+    withDescription this, "toProperty", initValue, @scan(initValue, latterF, {lazyF: true})
 
   toEventStream: -> this
 
