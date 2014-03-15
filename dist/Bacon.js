@@ -11,13 +11,7 @@
     }
   };
 
-<<<<<<< HEAD
-  Bacon.version = '0.7.7';
-||||||| merged common ancestors
-  Bacon.version = '0.7.1';
-=======
   Bacon.version = '<version>';
->>>>>>> build js
 
   Bacon.fromBinder = function(binder, eventTransformer) {
     if (eventTransformer == null) {
@@ -1040,7 +1034,7 @@
         var child;
         child = makeObservable(f(event.value()));
         return composite.add(function(unsubAll, unsubMe) {
-          return child.subscribe(function(event) {
+          return child.subscribeInternal(function(event) {
             var reply;
             if (event.isEnd()) {
               checkQueue();
@@ -1073,15 +1067,7 @@
         }
       };
       composite.add(function(__, unsubRoot) {
-<<<<<<< HEAD
         return root.subscribeInternal(function(event) {
-          var child;
-||||||| merged common ancestors
-        return root.subscribe(function(event) {
-          var child;
-=======
-        return root.subscribe(function(event) {
->>>>>>> build js
           if (event.isEnd()) {
             return checkEnd(unsubRoot);
           } else if (event.isError()) {
@@ -1092,57 +1078,11 @@
             if (composite.unsubscribed) {
               return Bacon.noMore;
             }
-<<<<<<< HEAD
-            child = makeObservable(f(event.value()));
-<<<<<<< HEAD
-            return composite.add(function(unsubAll, unsubMe) {
-              return child.subscribeInternal(function(event) {
-                var reply;
-                if (event.isEnd()) {
-                  checkEnd(unsubMe);
-                  return Bacon.noMore;
-                } else {
-                  if (event instanceof Initial) {
-                    event = event.toNext();
-                  }
-                  reply = sink(event);
-                  if (reply === Bacon.noMore) {
-                    unsubAll();
-                  }
-                  return reply;
-                }
-              });
-            });
-||||||| merged common ancestors
-            return composite.add(function(unsubAll, unsubMe) {
-              return child.subscribe(function(event) {
-                var reply;
-                if (event.isEnd()) {
-                  checkEnd(unsubMe);
-                  return Bacon.noMore;
-                } else {
-                  if (event instanceof Initial) {
-                    event = event.toNext();
-                  }
-                  reply = sink(event);
-                  if (reply === Bacon.noMore) {
-                    unsubAll();
-                  }
-                  return reply;
-                }
-              });
-            });
-=======
-||||||| merged common ancestors
-            child = makeObservable(f(event.value()));
-=======
->>>>>>> build js
             if (limit && composite.count() > limit) {
               return queue.push(event);
             } else {
               return spawn(event);
             }
->>>>>>> build js
           }
         });
       });
@@ -1549,8 +1489,8 @@
     };
 
     Property.prototype.rateLimit = function() {
-      var _ref3;
-      return (_ref3 = Property.__super__.rateLimit.apply(this, arguments)).rateLimit.apply(_ref3, arguments).toProperty();
+      var _ref1;
+      return (_ref1 = Property.__super__.rateLimit.apply(this, arguments)).rateLimit.apply(_ref1, arguments).toProperty();
     };
 
     return Property;
