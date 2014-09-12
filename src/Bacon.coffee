@@ -913,21 +913,19 @@ addPropertyInitValueToStream = (property, stream) ->
 class Dispatcher
   constructor: (subscribe, handleEvent) ->
     subscribe ?= -> nop
+    internalSubscriptions = []
     subscriptions = []
     queue = []
     pushing = false
     ended = false
-    @hasSubscribers = -> subscriptions.length > 0
+    @hasSubscribers = -> internalSubscriptions.length + subscriptions.length > 0
     prevError = null
     unsubscribeFromSource = nop
     removeSub = (subscription) ->
-      subscriptions = _.without(subscription, subscriptions)
-    waiters = null
-    done = ->
-      if waiters?
-        ws = waiters
-        waiters = null
-        w() for w in ws
+      if subscription.isInternal
+        internalSubscriptions = _.without(subscription, internalSubscriptions)
+      else
+        subscriptions = _.without(subscription, subscriptions)
     pushIt = (event) ->
       if not pushing
         return if event is prevError
@@ -935,8 +933,10 @@ class Dispatcher
         success = false
         try
           pushing = true
-          tmp = subscriptions
-          for sub in tmp
+          for sub in (tmp = subscriptions)
+            reply = sub.sink event
+            removeSub sub if reply == Bacon.noMore or event.isEnd()
+          for sub in (tmp = internalSubscriptions)
             reply = sub.sink event
             removeSub sub if reply == Bacon.noMore or event.isEnd()
           success = true
@@ -947,7 +947,6 @@ class Dispatcher
         while queue.length
           event = queue.shift()
           @push event
-        done(event)
         if @hasSubscribers()
           Bacon.more
         else
@@ -963,15 +962,16 @@ class Dispatcher
       if event.isEnd()
         ended = true
       handleEvent.apply(this, [event])
-    @subscribe = (sink) =>
+    @subscribe = (sink, isInternal = true) =>
       if ended
         sink end()
         nop
       else
         assertFunction sink
-        subscription = { sink: sink }
-        subscriptions.push(subscription)
-        if subscriptions.length == 1
+        subscription = { sink: sink, isInternal: isInternal }
+        subss = if isInternal then internalSubscriptions else subscriptions
+        subss.push(subscription)
+        if subscriptions.length + internalSubscriptions.length == 1
           unsubSrc = subscribe @handleEvent
           unsubscribeFromSource = ->
             unsubSrc()
@@ -997,7 +997,7 @@ class PropertyDispatcher extends Dispatcher
         currentValueRootId = UpdateBarrier.currentEventId()
         #console.log "push", event.value()
       push.apply(this, [event])
-    @subscribe = (sink) =>
+    @subscribe = (sink, isInternal) =>
       initSent = false
       # init value is "bounced" here because the base Dispatcher class
       # won't add more than one subscription to the underlying observable.
@@ -1012,7 +1012,7 @@ class PropertyDispatcher extends Dispatcher
           sink end()
           nop
         else
-          subscribe.apply(this, [sink])
+          subscribe.apply(this, [sink, isInternal])
 
       if current.isDefined and (@hasSubscribers() or ended)
         # should bounce init value
@@ -1428,12 +1428,13 @@ UpdateBarrier = (->
     unsub = ->
       unsubd = true
       doUnsub()
-    doUnsub = obs.subscribeInternal (event) ->
+    doUnsub = obs.subscribeInternal ((event) ->
       afterTransaction ->
         if not unsubd
           reply = sink event
           if reply == Bacon.noMore
             unsub()
+    ), false
     unsub
 
   hasWaiters = -> waiters.length > 0
