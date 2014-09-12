@@ -1,5 +1,5 @@
 (function() {
-  var Bacon, BufferingSource, Bus, CompositeUnsubscribe, ConsumingSource, DepCache, Desc, Dispatcher, End, Error, Event, EventStream, Exception, Initial, Next, None, Observable, Property, PropertyDispatcher, Some, Source, UpdateBarrier, addPropertyInitValueToStream, assert, assertArray, assertEventStream, assertFunction, assertNoArguments, assertString, cloneArray, compositeUnsubscribe, containsDuplicateDeps, convertArgsToFunction, describe, end, eventIdCounter, findDeps, flatMap_, former, idCounter, initial, isArray, isFieldKey, isFunction, isObservable, latterF, liftCallback, makeFunction, makeFunctionArgs, makeFunction_, makeObservable, makeSpawner, next, nop, partiallyApplied, recursionDepth, registerObs, spys, toCombinator, toEvent, toFieldExtractor, toFieldKey, toOption, toSimpleExtractor, withDescription, withMethodCallSupport, _, _ref,
+  var Bacon, BufferingSource, Bus, CompositeUnsubscribe, ConsumingSource, DepCache, Desc, Dispatcher, End, Error, Event, EventStream, Exception, Initial, Next, None, Observable, Property, PropertyDispatcher, Some, Source, UpdateBarrier, addPropertyInitValueToStream, assert, assertArray, assertEventStream, assertFunction, assertNoArguments, assertString, cloneArray, compositeUnsubscribe, containsDuplicateDeps, convertArgsToFunction, describe, end, eventIdCounter, findDeps, flatMap_, former, idCounter, initial, isArray, isFieldKey, isFunction, isObservable, latterF, liftCallback, makeFunction, makeFunctionArgs, makeFunction_, makeObservable, makeSpawner, next, nop, partiallyApplied, recursionDepth, registerObs, sampledBy_, spys, toCombinator, toEvent, toFieldExtractor, toFieldKey, toOption, toSimpleExtractor, withDescription, withMethodCallSupport, _, _ref,
     __slice = [].slice,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
@@ -11,7 +11,7 @@
     }
   };
 
-  Bacon.version = '0.7.22';
+  Bacon.version = '<version>';
 
   Exception = (typeof global !== "undefined" && global !== null ? global : this).Error;
 
@@ -402,6 +402,70 @@
     return withDescription.apply(null, [Bacon, "combineWith", f].concat(__slice.call(streams), [Bacon.combineAsArray(streams).map(function(values) {
       return f.apply(null, values);
     })]));
+  };
+
+  Bacon.sampledBy = function(values, samplers, combinator) {
+    var lazy, numValues, result, waitForSamplers;
+    if (!combinator) {
+      lazy = true;
+      numValues = values.length;
+      combinator = function() {
+        var fs, i, vals;
+        fs = 1 <= arguments.length ? __slice.call(arguments, 0) : [];
+        vals = [];
+        i = -1;
+        while (++i < numValues) {
+          vals.push(fs[i]());
+        }
+        return vals;
+      };
+    } else {
+      waitForSamplers = true;
+    }
+    result = sampledBy_(values, samplers, combinator, lazy, waitForSamplers);
+    if (lazy) {
+      return withDescription(Bacon, "sampledBy", values, samplers, result);
+    } else {
+      return withDescription(Bacon, "sampledBy", values, samplers, combinator, result);
+    }
+  };
+
+  sampledBy_ = function(values, samplers, combinator, lazy, waitForSamplers) {
+    var allProperties, p, ptn, result, s, samplerSources, src, v, valueSources;
+    allProperties = true;
+    samplerSources = (function() {
+      var _i, _len, _results;
+      _results = [];
+      for (_i = 0, _len = samplers.length; _i < _len; _i++) {
+        s = samplers[_i];
+        if (!(s instanceof Property)) {
+          allProperties = false;
+        }
+        src = new Source(s, true, s.subscribeInternal, lazy);
+        if (!waitForSamplers) {
+          src.push(null);
+        }
+        _results.push(src);
+      }
+      return _results;
+    })();
+    valueSources = (function() {
+      var _i, _len, _results;
+      _results = [];
+      for (_i = 0, _len = values.length; _i < _len; _i++) {
+        v = values[_i];
+        p = v.toProperty();
+        _results.push(new Source(p, false, p.subscribeInternal, lazy));
+      }
+      return _results;
+    })();
+    ptn = valueSources.concat(samplerSources);
+    result = Bacon.when(ptn, combinator);
+    if (allProperties) {
+      return result.toProperty();
+    } else {
+      return result;
+    }
   };
 
   Bacon.combineTemplate = function(template) {
@@ -1491,7 +1555,7 @@
     }
 
     Property.prototype.sampledBy = function(sampler, combinator) {
-      var lazy, result, samplerSource, stream, thisSource;
+      var lazy, result;
       if (combinator != null) {
         combinator = toCombinator(combinator);
       } else {
@@ -1500,10 +1564,7 @@
           return f();
         };
       }
-      thisSource = new Source(this, false, this.subscribeInternal, lazy);
-      samplerSource = new Source(sampler, true, sampler.subscribeInternal, lazy);
-      stream = Bacon.when([thisSource, samplerSource], combinator);
-      result = sampler instanceof Property ? stream.toProperty() : stream;
+      result = sampledBy_([this], [sampler], combinator, lazy, true);
       return withDescription(this, "sampledBy", sampler, combinator, result);
     };
 
@@ -1649,40 +1710,31 @@
 
   Dispatcher = (function() {
     function Dispatcher(subscribe, handleEvent) {
-      var done, ended, prevError, pushIt, pushing, queue, removeSub, subscriptions, unsubscribeFromSource, waiters;
+      var ended, internalSubscriptions, prevError, pushIt, pushing, queue, removeSub, subscriptions, unsubscribeFromSource;
       if (subscribe == null) {
         subscribe = function() {
           return nop;
         };
       }
+      internalSubscriptions = [];
       subscriptions = [];
       queue = [];
       pushing = false;
       ended = false;
       this.hasSubscribers = function() {
-        return subscriptions.length > 0;
+        return internalSubscriptions.length + subscriptions.length > 0;
       };
       prevError = null;
       unsubscribeFromSource = nop;
       removeSub = function(subscription) {
-        return subscriptions = _.without(subscription, subscriptions);
-      };
-      waiters = null;
-      done = function() {
-        var w, ws, _i, _len, _results;
-        if (waiters != null) {
-          ws = waiters;
-          waiters = null;
-          _results = [];
-          for (_i = 0, _len = ws.length; _i < _len; _i++) {
-            w = ws[_i];
-            _results.push(w());
-          }
-          return _results;
+        if (subscription.isInternal) {
+          return internalSubscriptions = _.without(subscription, internalSubscriptions);
+        } else {
+          return subscriptions = _.without(subscription, subscriptions);
         }
       };
       pushIt = function(event) {
-        var reply, sub, success, tmp, _i, _len;
+        var reply, sub, success, tmp, _i, _j, _len, _len1, _ref1, _ref2;
         if (!pushing) {
           if (event === prevError) {
             return;
@@ -1693,9 +1745,17 @@
           success = false;
           try {
             pushing = true;
-            tmp = subscriptions;
-            for (_i = 0, _len = tmp.length; _i < _len; _i++) {
-              sub = tmp[_i];
+            _ref1 = (tmp = subscriptions);
+            for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+              sub = _ref1[_i];
+              reply = sub.sink(event);
+              if (reply === Bacon.noMore || event.isEnd()) {
+                removeSub(sub);
+              }
+            }
+            _ref2 = (tmp = internalSubscriptions);
+            for (_j = 0, _len1 = _ref2.length; _j < _len1; _j++) {
+              sub = _ref2[_j];
               reply = sub.sink(event);
               if (reply === Bacon.noMore || event.isEnd()) {
                 removeSub(sub);
@@ -1713,7 +1773,6 @@
             event = queue.shift();
             this.push(event);
           }
-          done(event);
           if (this.hasSubscribers()) {
             return Bacon.more;
           } else {
@@ -1744,18 +1803,23 @@
         };
       })(this);
       this.subscribe = (function(_this) {
-        return function(sink) {
-          var subscription, unsubSrc;
+        return function(sink, isInternal) {
+          var subscription, subss, unsubSrc;
+          if (isInternal == null) {
+            isInternal = true;
+          }
           if (ended) {
             sink(end());
             return nop;
           } else {
             assertFunction(sink);
             subscription = {
-              sink: sink
+              sink: sink,
+              isInternal: isInternal
             };
-            subscriptions.push(subscription);
-            if (subscriptions.length === 1) {
+            subss = isInternal ? internalSubscriptions : subscriptions;
+            subss.push(subscription);
+            if (subscriptions.length + internalSubscriptions.length === 1) {
               unsubSrc = subscribe(_this.handleEvent);
               unsubscribeFromSource = function() {
                 unsubSrc();
@@ -1802,7 +1866,7 @@
         };
       })(this);
       this.subscribe = (function(_this) {
-        return function(sink) {
+        return function(sink, isInternal) {
           var dispatchingId, initSent, maybeSubSource, reply, valId;
           initSent = false;
           reply = Bacon.more;
@@ -1813,7 +1877,7 @@
               sink(end());
               return nop;
             } else {
-              return subscribe.apply(this, [sink]);
+              return subscribe.apply(this, [sink, isInternal]);
             }
           };
           if (current.isDefined && (_this.hasSubscribers() || ended)) {
@@ -2627,7 +2691,7 @@
           unsubd = true;
           return doUnsub();
         };
-        doUnsub = obs.subscribeInternal(function(event) {
+        doUnsub = obs.subscribeInternal((function(event) {
           return afterTransaction(function() {
             var reply;
             if (!unsubd) {
@@ -2637,7 +2701,7 @@
               }
             }
           });
-        });
+        }), false);
         return unsub;
       };
     };
